@@ -30,7 +30,8 @@ void PrintHelp() {
          "  -d         Decrypt input\n"
          "  -i <text>  Input text (omit to read from stdin)\n"
          "  -k <key>   Key (default: ABRACADABRA)\n"
-         "  --old      Use old mapping mode\n"
+         "  --old      Use old mapping mode (markers omitted by default)\n"
+         "  --old-markers  Include old-mode decrypt markers in output\n"
          "  /?         Show this help\n";
 }
 
@@ -51,6 +52,7 @@ int RunCli(const std::vector<std::string>& args) {
     bool encrypt = false;
     bool decrypt = false;
     bool useOld = false;
+    bool oldOmitMarkers = true;
     std::string key = "ABRACADABRA";
     std::string input;
 
@@ -70,6 +72,10 @@ int RunCli(const std::vector<std::string>& args) {
       }
       if (arg == "--old") {
         useOld = true;
+        continue;
+      }
+      if (arg == "--old-markers") {
+        oldOmitMarkers = false;
         continue;
       }
       if (arg == "-k") {
@@ -105,7 +111,7 @@ int RunCli(const std::vector<std::string>& args) {
       abra.OldInput(input,
                     encrypt ? moyue::app::Abracadabra::Mode::kEncrypt
                             : moyue::app::Abracadabra::Mode::kDecrypt,
-                    key);
+                    key, oldOmitMarkers);
     } else {
       abra.WenyanInput(input,
                        encrypt ? moyue::app::Abracadabra::Mode::kEncrypt
