@@ -726,6 +726,7 @@ class WenyanSimulator {
     const auto& beginTemplates = mappingData_.sentencesBegin;
     const auto& endTemplates = mappingData_.sentencesEnd;
 
+    roundObfusHelper_.RoundKey();
     while (index < length) {
       size_t remaining = length - index;
       const auto& templates = (remaining <= 6 && !endTemplates.empty())
@@ -809,6 +810,7 @@ class WenyanSimulator {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
@@ -880,6 +882,7 @@ class OldMapper {
         output += detail::RandomChoice(mappingData_.decryptCn);
       }
     }
+    roundObfusHelper_.RoundKey();
     for (char c : originStr) {
       std::string obfuscated = roundObfusHelper_.RoundKeyMatch(std::string(1, c));
       roundObfusHelper_.RoundKey();
@@ -891,6 +894,7 @@ class OldMapper {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
