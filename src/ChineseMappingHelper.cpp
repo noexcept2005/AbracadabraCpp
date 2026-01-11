@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <fstream>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -28,13 +29,16 @@
 
 namespace moyue::mapping {
 
-namespace {
+namespace detail {
+struct JsonValue;
+using JsonPtr = std::shared_ptr<JsonValue>;
+
 struct JsonValue {
   enum class Type { kObject, kArray, kString, kNull };
 
   Type type = Type::kNull;
-  std::unordered_map<std::string, JsonValue> object;
-  std::vector<JsonValue> array;
+  std::unordered_map<std::string, JsonPtr> object;
+  std::vector<JsonPtr> array;
   std::string string;
 };
 
@@ -114,7 +118,8 @@ class JsonParser {
         throw std::runtime_error("Expected ':' in JSON object");
       }
       JsonValue child = ParseValue();
-      value.object.emplace(std::move(key), std::move(child));
+      value.object.emplace(std::move(key),
+                           std::make_shared<JsonValue>(std::move(child)));
       SkipWhitespace();
       if (Consume('}')) {
         break;
@@ -136,7 +141,7 @@ class JsonParser {
     }
     while (true) {
       JsonValue child = ParseValue();
-      value.array.emplace_back(std::move(child));
+      value.array.emplace_back(std::make_shared<JsonValue>(std::move(child)));
       SkipWhitespace();
       if (Consume(']')) {
         break;
@@ -243,8 +248,8 @@ std::vector<std::string> JsonArrayToStrings(const JsonValue& value) {
   }
   items.reserve(value.array.size());
   for (const auto& item : value.array) {
-    if (item.type == JsonValue::Type::kString) {
-      items.push_back(item.string);
+    if (item && item->type == JsonValue::Type::kString) {
+      items.push_back(item->string);
     }
   }
   return items;
@@ -257,19 +262,19 @@ TokenMap ParseTokenMap(const JsonValue& value) {
   }
   auto alphabetIt = value.object.find("alphabet");
   if (alphabetIt != value.object.end() &&
-      alphabetIt->second.type == JsonValue::Type::kObject) {
-    for (const auto& [key, val] : alphabetIt->second.object) {
-      if (!key.empty() && val.type == JsonValue::Type::kString) {
-        map.alphabet.emplace(key[0], val.string);
+      alphabetIt->second && alphabetIt->second->type == JsonValue::Type::kObject) {
+    for (const auto& [key, val] : alphabetIt->second->object) {
+      if (!key.empty() && val && val->type == JsonValue::Type::kString) {
+        map.alphabet.emplace(key[0], val->string);
       }
     }
   }
   auto numberIt = value.object.find("numbersymbol");
   if (numberIt != value.object.end() &&
-      numberIt->second.type == JsonValue::Type::kObject) {
-    for (const auto& [key, val] : numberIt->second.object) {
-      if (!key.empty() && val.type == JsonValue::Type::kString) {
-        map.numberSymbol.emplace(key[0], val.string);
+      numberIt->second && numberIt->second->type == JsonValue::Type::kObject) {
+    for (const auto& [key, val] : numberIt->second->object) {
+      if (!key.empty() && val && val->type == JsonValue::Type::kString) {
+        map.numberSymbol.emplace(key[0], val->string);
       }
     }
   }
@@ -284,39 +289,41 @@ WenyanMappingData LoadWenyanMapping(const std::string& path) {
 
   auto actualIt = root.object.find("Actual");
   if (actualIt != root.object.end() &&
-      actualIt->second.type == JsonValue::Type::kObject) {
-    const auto& actual = actualIt->second.object;
+      actualIt->second && actualIt->second->type == JsonValue::Type::kObject) {
+    const auto& actual = actualIt->second->object;
     const std::vector<std::string> tokenKeys = {"N", "V", "A", "AD"};
     for (const auto& key : tokenKeys) {
       auto tokenIt = actual.find(key);
-      if (tokenIt != actual.end()) {
-        data.actualMaps.emplace(key, ParseTokenMap(tokenIt->second));
+      if (tokenIt != actual.end() && tokenIt->second) {
+        data.actualMaps.emplace(key, ParseTokenMap(*tokenIt->second));
       }
     }
     auto mvIt = actual.find("MV");
-    if (mvIt != actual.end()) {
-      data.modalVerbs = JsonArrayToStrings(mvIt->second);
+    if (mvIt != actual.end() && mvIt->second) {
+      data.modalVerbs = JsonArrayToStrings(*mvIt->second);
     }
   }
 
   auto virtualIt = root.object.find("Virtual");
   if (virtualIt != root.object.end() &&
-      virtualIt->second.type == JsonValue::Type::kObject) {
-    for (const auto& [key, value] : virtualIt->second.object) {
-      data.virtualWords.emplace(key, JsonArrayToStrings(value));
+      virtualIt->second && virtualIt->second->type == JsonValue::Type::kObject) {
+    for (const auto& [key, value] : virtualIt->second->object) {
+      if (value) {
+        data.virtualWords.emplace(key, JsonArrayToStrings(*value));
+      }
     }
   }
 
   auto sentencesIt = root.object.find("Sentences");
   if (sentencesIt != root.object.end() &&
-      sentencesIt->second.type == JsonValue::Type::kObject) {
-    auto beginIt = sentencesIt->second.object.find("Begin");
-    if (beginIt != sentencesIt->second.object.end()) {
-      data.sentencesBegin = JsonArrayToStrings(beginIt->second);
+      sentencesIt->second && sentencesIt->second->type == JsonValue::Type::kObject) {
+    auto beginIt = sentencesIt->second->object.find("Begin");
+    if (beginIt != sentencesIt->second->object.end() && beginIt->second) {
+      data.sentencesBegin = JsonArrayToStrings(*beginIt->second);
     }
-    auto endIt = sentencesIt->second.object.find("End");
-    if (endIt != sentencesIt->second.object.end()) {
-      data.sentencesEnd = JsonArrayToStrings(endIt->second);
+    auto endIt = sentencesIt->second->object.find("End");
+    if (endIt != sentencesIt->second->object.end() && endIt->second) {
+      data.sentencesEnd = JsonArrayToStrings(*endIt->second);
     }
   }
 
@@ -331,22 +338,22 @@ OldMappingData LoadOldMapping(const std::string& path) {
 
   auto basicIt = root.object.find("basic");
   if (basicIt != root.object.end() &&
-      basicIt->second.type == JsonValue::Type::kObject) {
-    auto alphabetIt = basicIt->second.object.find("alphabet");
-    if (alphabetIt != basicIt->second.object.end() &&
-        alphabetIt->second.type == JsonValue::Type::kObject) {
-      for (const auto& [key, value] : alphabetIt->second.object) {
+      basicIt->second && basicIt->second->type == JsonValue::Type::kObject) {
+    auto alphabetIt = basicIt->second->object.find("alphabet");
+    if (alphabetIt != basicIt->second->object.end() && alphabetIt->second &&
+        alphabetIt->second->type == JsonValue::Type::kObject) {
+      for (const auto& [key, value] : alphabetIt->second->object) {
         if (!key.empty()) {
-          data.alphabet.emplace(key[0], JsonArrayToStrings(value));
+          data.alphabet.emplace(key[0], JsonArrayToStrings(*value));
         }
       }
     }
-    auto numberIt = basicIt->second.object.find("numbersymbol");
-    if (numberIt != basicIt->second.object.end() &&
-        numberIt->second.type == JsonValue::Type::kObject) {
-      for (const auto& [key, value] : numberIt->second.object) {
+    auto numberIt = basicIt->second->object.find("numbersymbol");
+    if (numberIt != basicIt->second->object.end() && numberIt->second &&
+        numberIt->second->type == JsonValue::Type::kObject) {
+      for (const auto& [key, value] : numberIt->second->object) {
         if (!key.empty()) {
-          data.numberSymbol.emplace(key[0], JsonArrayToStrings(value));
+          data.numberSymbol.emplace(key[0], JsonArrayToStrings(*value));
         }
       }
     }
@@ -354,17 +361,17 @@ OldMappingData LoadOldMapping(const std::string& path) {
 
   auto specialIt = root.object.find("special");
   if (specialIt != root.object.end() &&
-      specialIt->second.type == JsonValue::Type::kObject) {
-    auto decryptIt = specialIt->second.object.find("DECRYPT");
-    if (decryptIt != specialIt->second.object.end() &&
-        decryptIt->second.type == JsonValue::Type::kObject) {
-      auto jpIt = decryptIt->second.object.find("JP");
-      if (jpIt != decryptIt->second.object.end()) {
-        data.decryptJp = JsonArrayToStrings(jpIt->second);
+      specialIt->second && specialIt->second->type == JsonValue::Type::kObject) {
+    auto decryptIt = specialIt->second->object.find("DECRYPT");
+    if (decryptIt != specialIt->second->object.end() && decryptIt->second &&
+        decryptIt->second->type == JsonValue::Type::kObject) {
+      auto jpIt = decryptIt->second->object.find("JP");
+      if (jpIt != decryptIt->second->object.end() && jpIt->second) {
+        data.decryptJp = JsonArrayToStrings(*jpIt->second);
       }
-      auto cnIt = decryptIt->second.object.find("CN");
-      if (cnIt != decryptIt->second.object.end()) {
-        data.decryptCn = JsonArrayToStrings(cnIt->second);
+      auto cnIt = decryptIt->second->object.find("CN");
+      if (cnIt != decryptIt->second->object.end() && cnIt->second) {
+        data.decryptCn = JsonArrayToStrings(*cnIt->second);
       }
     }
   }
@@ -422,12 +429,12 @@ std::vector<std::string> SplitUtf8(const std::string& input) {
   }
   return chars;
 }
-}  // namespace
+}  // namespace detail
 
 class WenyanSimulator {
  public:
   explicit WenyanSimulator(const std::string& key)
-      : mappingData_(LoadWenyanMapping("src/mapping_next.json")),
+      : mappingData_(detail::LoadWenyanMapping("src/mapping_next.json")),
         roundObfusHelper_(key) {
     InitDecodeTable();
   }
@@ -709,8 +716,8 @@ class WenyanSimulator {
       while (attempts < templates.size()) {
         std::string tpl = templates[static_cast<size_t>(
             moyue::misc::GetRandomIndex(static_cast<int>(templates.size())))];
-        auto tokens = SplitTokens(tpl);
-        size_t slots = CountPayloadSlots(tokens);
+        auto tokens = detail::SplitTokens(tpl);
+        size_t slots = detail::CountPayloadSlots(tokens);
         if (slots > 0 && slots <= remaining) {
           selectedTokens = std::move(tokens);
           break;
@@ -734,12 +741,12 @@ class WenyanSimulator {
           continue;
         }
         if (token == "MV") {
-          output += RandomChoice(mappingData_.modalVerbs);
+          output += detail::RandomChoice(mappingData_.modalVerbs);
           continue;
         }
         auto virtualIt = mappingData_.virtualWords.find(token);
         if (virtualIt != mappingData_.virtualWords.end()) {
-          output += RandomChoice(virtualIt->second);
+          output += detail::RandomChoice(virtualIt->second);
           continue;
         }
         if (token == "P") {
@@ -766,7 +773,7 @@ class WenyanSimulator {
 
   std::string DeMap(const std::string& originStr) {
     std::string output;
-    auto chars = SplitUtf8(originStr);
+    auto chars = detail::SplitUtf8(originStr);
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
@@ -780,7 +787,7 @@ class WenyanSimulator {
   }
 
  private:
-  WenyanMappingData mappingData_;
+  detail::WenyanMappingData mappingData_;
   std::string nullStr_ = "孎"; //默认忽略的占位字符，一个生僻字。
   moyue::round::RoundObfus roundObfusHelper_;
   std::unordered_map<std::string, char> decodeTable_;
@@ -789,7 +796,7 @@ class WenyanSimulator {
 class OldMapper {
  public:
   explicit OldMapper(const std::string& key)
-      : mappingData_(LoadOldMapping("src/mapping.json")),
+      : mappingData_(detail::LoadOldMapping("src/mapping.json")),
         roundObfusHelper_(key) {
     InitDecodeTable();
   }
@@ -811,11 +818,11 @@ class OldMapper {
     char token = text.front();
     auto alphaIt = mappingData_.alphabet.find(token);
     if (alphaIt != mappingData_.alphabet.end()) {
-      return RandomChoice(alphaIt->second);
+      return detail::RandomChoice(alphaIt->second);
     }
     auto numIt = mappingData_.numberSymbol.find(token);
     if (numIt != mappingData_.numberSymbol.end()) {
-      return RandomChoice(numIt->second);
+      return detail::RandomChoice(numIt->second);
     }
     return nullStr_;
   }
@@ -832,10 +839,10 @@ class OldMapper {
     std::string output;
     if (!q) {
       if (!mappingData_.decryptJp.empty()) {
-        output += RandomChoice(mappingData_.decryptJp);
+        output += detail::RandomChoice(mappingData_.decryptJp);
       }
       if (!mappingData_.decryptCn.empty()) {
-        output += RandomChoice(mappingData_.decryptCn);
+        output += detail::RandomChoice(mappingData_.decryptCn);
       }
     }
     for (char c : originStr) {
@@ -848,7 +855,7 @@ class OldMapper {
 
   std::string DeMap(const std::string& originStr) {
     std::string output;
-    auto chars = SplitUtf8(originStr);
+    auto chars = detail::SplitUtf8(originStr);
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
@@ -876,7 +883,7 @@ class OldMapper {
     }
   }
 
-  OldMappingData mappingData_;
+  detail::OldMappingData mappingData_;
   std::string nullStr_ = "孎"; //默认忽略的占位字符，一个生僻字。
   moyue::round::RoundObfusOld roundObfusHelper_;
   std::unordered_map<std::string, char> decodeTable_;
