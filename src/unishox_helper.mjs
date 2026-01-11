@@ -6,6 +6,7 @@ import {
   USX_FREQ_SEQ_DFLT,
   USX_TEMPLATES,
 } from "../Abracadabra/unishox2.js";
+import { gunzipSync, gzipSync } from "node:zlib";
 
 const CHINESE_WEBPAN_LIB = [
   "https://",
@@ -452,6 +453,15 @@ if (mode === "compress") {
   result = unishoxCompress(input);
 } else if (mode === "decompress") {
   result = unishoxDecompress(input);
+} else if (mode === "gzip_compress") {
+  const compressed = gzipSync(Buffer.from(input));
+  result = compressed.length >= input.byteLength ? input : new Uint8Array(compressed);
+} else if (mode === "gzip_decompress") {
+  if (input.byteLength < 2 || input[0] !== 0x1f || input[1] !== 0x8b) {
+    result = input;
+  } else {
+    result = new Uint8Array(gunzipSync(Buffer.from(input)));
+  }
 } else {
   process.exit(1);
 }

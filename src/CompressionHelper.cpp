@@ -25,76 +25,6 @@
 namespace moyue::compress {
 
 namespace {
-std::vector<std::uint8_t> GzipCompress(const std::vector<std::uint8_t>& data) {
-  if (data.empty()) {
-    return data;
-  }
-
-  z_stream stream{};
-  if (deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
-                   Z_DEFAULT_STRATEGY) != Z_OK) {
-    return data;
-  }
-
-  std::vector<std::uint8_t> output;
-  output.resize(compressBound(static_cast<uLong>(data.size())));
-
-  stream.next_in = const_cast<Bytef*>(data.data());
-  stream.avail_in = static_cast<uInt>(data.size());
-  stream.next_out = output.data();
-  stream.avail_out = static_cast<uInt>(output.size());
-
-  int result = deflate(&stream, Z_FINISH);
-  if (result != Z_STREAM_END) {
-    deflateEnd(&stream);
-    return data;
-  }
-  output.resize(stream.total_out);
-  deflateEnd(&stream);
-
-  if (output.size() >= data.size()) {
-    return data;
-  }
-  return output;
-}
-
-std::vector<std::uint8_t> GzipDecompress(
-    const std::vector<std::uint8_t>& data) {
-  if (data.size() < 2) {
-    return data;
-  }
-  if (data[0] != 0x1f || data[1] != 0x8b) {
-    return data;
-  }
-
-  z_stream stream{};
-  if (inflateInit2(&stream, 15 + 32) != Z_OK) {
-    return data;
-  }
-
-  std::vector<std::uint8_t> output;
-  std::array<std::uint8_t, 32768> buffer{};
-
-  stream.next_in = const_cast<Bytef*>(data.data());
-  stream.avail_in = static_cast<uInt>(data.size());
-
-  int result = Z_OK;
-  while (result != Z_STREAM_END) {
-    stream.next_out = buffer.data();
-    stream.avail_out = static_cast<uInt>(buffer.size());
-    result = inflate(&stream, Z_NO_FLUSH);
-    if (result != Z_OK && result != Z_STREAM_END) {
-      inflateEnd(&stream);
-      return data;
-    }
-    size_t produced = buffer.size() - stream.avail_out;
-    output.insert(output.end(), buffer.begin(), buffer.begin() + produced);
-  }
-
-  inflateEnd(&stream);
-  return output;
-}
-
 std::string QuoteForShell(const std::string& input) {
   std::string output = "'";
   for (char c : input) {
@@ -108,8 +38,8 @@ std::string QuoteForShell(const std::string& input) {
   return output;
 }
 
-std::vector<std::uint8_t> RunUnishoxHelper(const std::vector<std::uint8_t>& data,
-                                           const std::string& mode) {
+std::vector<std::uint8_t> RunNodeHelper(const std::vector<std::uint8_t>& data,
+                                        const std::string& mode) {
   std::string input(data.begin(), data.end());
   std::string base64 = moyue::misc::Base64Encode(input);
 
@@ -142,14 +72,23 @@ std::vector<std::uint8_t> RunUnishoxHelper(const std::vector<std::uint8_t>& data
   return std::vector<std::uint8_t>(decoded.begin(), decoded.end());
 }
 
+std::vector<std::uint8_t> GzipCompress(const std::vector<std::uint8_t>& data) {
+  return RunNodeHelper(data, "gzip_compress");
+}
+
+std::vector<std::uint8_t> GzipDecompress(
+    const std::vector<std::uint8_t>& data) {
+  return RunNodeHelper(data, "gzip_decompress");
+}
+
 std::vector<std::uint8_t> UnishoxCompress(
     const std::vector<std::uint8_t>& data) {
-  return RunUnishoxHelper(data, "compress");
+  return RunNodeHelper(data, "compress");
 }
 
 std::vector<std::uint8_t> UnishoxDecompress(
     const std::vector<std::uint8_t>& data) {
-  return RunUnishoxHelper(data, "decompress");
+  return RunNodeHelper(data, "decompress");
 }
 }  // namespace
 
