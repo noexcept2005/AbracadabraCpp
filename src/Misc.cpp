@@ -12,6 +12,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <random>
 #include <string>
@@ -27,17 +28,71 @@ std::mt19937& RandomEngine() {
   static std::mt19937 engine{std::random_device{}()};
   return engine;
 }
+}  // namespace
+
+constexpr char kBase64Chars[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 std::string Base64Encode(const std::string& input) {
-  // TODO: Replace with a robust Base64 implementation if needed.
-  return input;
+  std::string output;
+  output.reserve(((input.size() + 2) / 3) * 4);
+  const auto* bytes = reinterpret_cast<const unsigned char*>(input.data());
+  size_t i = 0;
+  while (i + 2 < input.size()) {
+    unsigned int triple =
+        (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    output.push_back(kBase64Chars[(triple >> 18) & 0x3F]);
+    output.push_back(kBase64Chars[(triple >> 12) & 0x3F]);
+    output.push_back(kBase64Chars[(triple >> 6) & 0x3F]);
+    output.push_back(kBase64Chars[triple & 0x3F]);
+    i += 3;
+  }
+
+  if (i < input.size()) {
+    unsigned int triple = bytes[i] << 16;
+    if (i + 1 < input.size()) {
+      triple |= bytes[i + 1] << 8;
+    }
+    output.push_back(kBase64Chars[(triple >> 18) & 0x3F]);
+    output.push_back(kBase64Chars[(triple >> 12) & 0x3F]);
+    if (i + 1 < input.size()) {
+      output.push_back(kBase64Chars[(triple >> 6) & 0x3F]);
+    } else {
+      output.push_back('=');
+    }
+    output.push_back('=');
+  }
+
+  return output;
 }
 
 std::string Base64Decode(const std::string& input) {
-  // TODO: Replace with a robust Base64 implementation if needed.
-  return input;
+  std::array<int, 256> decodeTable{};
+  decodeTable.fill(-1);
+  for (int i = 0; i < 64; ++i) {
+    decodeTable[static_cast<unsigned char>(kBase64Chars[i])] = i;
+  }
+
+  std::string output;
+  int val = 0;
+  int valb = -8;
+  for (unsigned char c : input) {
+    if (c == '=') {
+      break;
+    }
+    int decoded = decodeTable[c];
+    if (decoded < 0) {
+      continue;
+    }
+    val = (val << 6) + decoded;
+    valb += 6;
+    if (valb >= 0) {
+      output.push_back(static_cast<char>((val >> valb) & 0xFF));
+      valb -= 8;
+    }
+  }
+  return output;
 }
-}  // namespace
 
 class PreCheckResult {
  public:
