@@ -517,10 +517,10 @@ class WenyanSimulator {
     decodeTable_.clear();
     for (const auto& [type, map] : mappingData_.actualMaps) {
       for (const auto& [key, value] : map.alphabet) {
-        decodeTable_.emplace(value, key);
+        decodeTable_[value] = key;
       }
       for (const auto& [key, value] : map.numberSymbol) {
-        decodeTable_.emplace(value, key);
+        decodeTable_[value] = key;
       }
     }
   }
@@ -963,12 +963,12 @@ class OldMapper {
     decodeTable_.clear();
     for (const auto& [key, values] : mappingData_.alphabet) {
       for (const auto& value : values) {
-        decodeTable_.emplace(value, key);
+        decodeTable_[value] = key;
       }
     }
     for (const auto& [key, values] : mappingData_.numberSymbol) {
       for (const auto& value : values) {
-        decodeTable_.emplace(value, key);
+        decodeTable_[value] = key;
       }
     }
   }
