@@ -189,6 +189,8 @@ std::string DecOld(const InputPayload& input, const std::string& key) {
   //初始化
   moyue::mapping::OldMapper mapper(key);
   std::string originStr = moyue::misc::Uint8ArrayToString(input.output);
+  auto preCheckRes = moyue::misc::PreCheckOld(originStr);
+  originStr = moyue::misc::Uint8ArrayToString(preCheckRes.output());
 
   //解映射
   std::string tempStr1 = mapper.DeMap(originStr);
