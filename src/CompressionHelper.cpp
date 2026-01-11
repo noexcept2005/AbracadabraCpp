@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <zlib.h>
@@ -25,6 +26,24 @@
 namespace moyue::compress {
 
 namespace {
+#ifdef _WIN32
+std::wstring QuoteForShellW(std::wstring_view input) {
+  std::wstring output = L"\"";
+  for (wchar_t c : input) {
+    if (c == L'"') {
+      output += L"\\\"";
+    } else {
+      output += c;
+    }
+  }
+  output += L"\"";
+  return output;
+}
+
+std::wstring ToWideAscii(const std::string& input) {
+  return std::wstring(input.begin(), input.end());
+}
+#else
 std::string QuoteForShell(const std::string& input) {
   std::string output = "'";
   for (char c : input) {
@@ -37,28 +56,50 @@ std::string QuoteForShell(const std::string& input) {
   output += "'";
   return output;
 }
+#endif
 
 std::vector<std::uint8_t> RunNodeHelper(const std::vector<std::uint8_t>& data,
                                         const std::string& mode) {
   std::string input(data.begin(), data.end());
   std::string base64 = moyue::misc::Base64Encode(input);
 
-  std::filesystem::path helperPath =
-      std::filesystem::path(__FILE__).parent_path() / "unishox_helper.mjs";
+  std::filesystem::path helperPath = "unishox_helper.mjs";
+  if (!std::filesystem::exists(helperPath)) {
+    helperPath = std::filesystem::path("src") / "unishox_helper.mjs";
+  }
+  if (!std::filesystem::exists(helperPath)) {
+    helperPath =
+        std::filesystem::path(__FILE__).parent_path() / "unishox_helper.mjs";
+  }
 
+#ifdef _WIN32
+  std::wstring command =
+      L"node " + QuoteForShellW(helperPath.wstring()) + L" " +
+      QuoteForShellW(ToWideAscii(mode)) + L" " +
+      QuoteForShellW(ToWideAscii(base64));
+#else
   std::string command = "node " + QuoteForShell(helperPath.string()) + " " +
                         QuoteForShell(mode) + " " + QuoteForShell(base64);
+#endif
 
   std::array<char, 256> buffer{};
   std::string output;
+#ifdef _WIN32
+  FILE* pipe = _wpopen(command.c_str(), L"r");
+#else
   FILE* pipe = popen(command.c_str(), "r");
+#endif
   if (!pipe) {
     return data;
   }
   while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe)) {
     output += buffer.data();
   }
+#ifdef _WIN32
+  int status = _pclose(pipe);
+#else
   int status = pclose(pipe);
+#endif
   if (status != 0 || output.empty()) {
     return data;
   }

@@ -204,9 +204,17 @@ std::string DecOld(const InputPayload& input, const std::string& key) {
   tempStr2Int = moyue::compress::Decompress(tempStr2Int);
 
   if (!moyue::misc::CheckLuhnBit(tempStr2Int)) {
-    throw std::runtime_error("Error Decrypting. Checksum Mismatch.");
+    if (tempStr2Int.size() >= 3 &&
+        tempStr2Int[tempStr2Int.size() - 1] == 2 &&
+        tempStr2Int[tempStr2Int.size() - 2] == 2 &&
+        tempStr2Int[tempStr2Int.size() - 3] == 2) {
+      tempStr2Int.resize(tempStr2Int.size() - 3);
+    } else {
+      throw std::runtime_error("Error Decrypting. Checksum Mismatch.");
+    }
+  } else {
+    tempStr2Int.pop_back();
   }
-  tempStr2Int.pop_back();
 
   return moyue::misc::Uint8ArrayToString(tempStr2Int);
 }
