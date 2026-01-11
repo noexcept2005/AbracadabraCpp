@@ -45,6 +45,18 @@ std::wstring ToWideAscii(const std::string& input) {
 }
 #else
 std::string QuoteForShell(const std::string& input) {
+#ifdef _WIN32
+  std::string output = "\"";
+  for (char c : input) {
+    if (c == '"') {
+      output += "\\\"";
+    } else {
+      output += c;
+    }
+  }
+  output += "\"";
+  return output;
+#else
   std::string output = "'";
   for (char c : input) {
     if (c == '\'') {
@@ -55,6 +67,7 @@ std::string QuoteForShell(const std::string& input) {
   }
   output += "'";
   return output;
+#endif
 }
 #endif
 
