@@ -449,6 +449,19 @@ std::vector<std::string> SplitUtf8(const std::string& input) {
   }
   return chars;
 }
+
+void InsertUtf8Tokens(std::vector<std::string>& chars, size_t index,
+                      const std::string& value) {
+  auto tokens = SplitUtf8(value);
+  if (tokens.empty()) {
+    return;
+  }
+  if (index > chars.size()) {
+    index = chars.size();
+  }
+  chars.insert(chars.begin() + static_cast<std::ptrdiff_t>(index),
+               tokens.begin(), tokens.end());
+}
 }  // namespace detail
 
 class WenyanSimulator {
@@ -726,6 +739,7 @@ class WenyanSimulator {
     const auto& beginTemplates = mappingData_.sentencesBegin;
     const auto& endTemplates = mappingData_.sentencesEnd;
 
+    roundObfusHelper_.RoundKey();
     while (index < length) {
       size_t remaining = length - index;
       const auto& templates = (remaining <= 6 && !endTemplates.empty())
@@ -809,6 +823,7 @@ class WenyanSimulator {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
@@ -880,10 +895,53 @@ class OldMapper {
         output += detail::RandomChoice(mappingData_.decryptCn);
       }
     }
+    roundObfusHelper_.RoundKey();
     for (char c : originStr) {
       std::string obfuscated = roundObfusHelper_.RoundKeyMatch(std::string(1, c));
       roundObfusHelper_.RoundKey();
       output += GetCryptText(obfuscated);
+    }
+
+    if (!q && (!mappingData_.decryptJp.empty() || !mappingData_.decryptCn.empty())) {
+      auto chars = detail::SplitUtf8(output);
+      std::vector<int> positions;
+      positions.reserve(chars.size());
+      for (size_t i = 0; i < chars.size(); ++i) {
+        positions.push_back(static_cast<int>(i));
+      }
+
+      std::vector<int> avoid;
+      if (!mappingData_.decryptJp.empty() && !positions.empty()) {
+        int jpIndex = positions[static_cast<size_t>(moyue::misc::GetRandomIndex(
+            static_cast<int>(positions.size())))];
+        std::string jpMarker = detail::RandomChoice(mappingData_.decryptJp);
+        detail::InsertUtf8Tokens(chars, static_cast<size_t>(jpIndex), jpMarker);
+        auto markerTokens = detail::SplitUtf8(jpMarker);
+        for (size_t i = 1; i < markerTokens.size(); ++i) {
+          avoid.push_back(jpIndex + static_cast<int>(i));
+        }
+      }
+
+      if (!mappingData_.decryptCn.empty() && !positions.empty()) {
+        std::vector<int> available;
+        available.reserve(positions.size());
+        for (int pos : positions) {
+          if (std::find(avoid.begin(), avoid.end(), pos) == avoid.end()) {
+            available.push_back(pos);
+          }
+        }
+        if (!available.empty()) {
+          int cnIndex = available[static_cast<size_t>(moyue::misc::GetRandomIndex(
+              static_cast<int>(available.size())))];
+          std::string cnMarker = detail::RandomChoice(mappingData_.decryptCn);
+          detail::InsertUtf8Tokens(chars, static_cast<size_t>(cnIndex), cnMarker);
+        }
+      }
+
+      output.clear();
+      for (const auto& ch : chars) {
+        output += ch;
+      }
     }
     return output;
   }
@@ -891,6 +949,7 @@ class OldMapper {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
