@@ -394,10 +394,20 @@ std::vector<std::string> SplitTokens(const std::string& text) {
   return tokens;
 }
 
+std::string StripTokenPrefix(const std::string& token) {
+  size_t idx = 0;
+  while (idx < token.size() && token[idx] >= '0' && token[idx] <= '9') {
+    ++idx;
+  }
+  return token.substr(idx);
+}
+
 size_t CountPayloadSlots(const std::vector<std::string>& tokens) {
   size_t count = 0;
   for (const auto& token : tokens) {
-    if (token == "N" || token == "V" || token == "A" || token == "AD") {
+    std::string stripped = StripTokenPrefix(token);
+    if (stripped == "N" || stripped == "V" || stripped == "A" ||
+        stripped == "AD") {
       ++count;
     }
   }
@@ -729,43 +739,53 @@ class WenyanSimulator {
       }
 
       for (const auto& token : selectedTokens) {
-        if (token == "N" || token == "V" || token == "A" || token == "AD") {
+        std::string stripped = detail::StripTokenPrefix(token);
+        if (stripped == "N" || stripped == "V" || stripped == "A" ||
+            stripped == "AD") {
           if (index >= length) {
             continue;
           }
           std::string obfuscated =
               roundObfusHelper_.RoundKeyMatch(std::string(1, originStr[index]));
           roundObfusHelper_.RoundKey();
-          output += GetCryptText(obfuscated, token);
+          output += GetCryptText(obfuscated, stripped);
           ++index;
           continue;
         }
-        if (token == "MV") {
+        if (stripped == "MV") {
           output += detail::RandomChoice(mappingData_.modalVerbs);
           continue;
         }
-        auto virtualIt = mappingData_.virtualWords.find(token);
+        auto virtualIt = mappingData_.virtualWords.find(stripped);
         if (virtualIt != mappingData_.virtualWords.end()) {
           output += detail::RandomChoice(virtualIt->second);
           continue;
         }
-        if (token == "P") {
+        if (stripped == "P") {
           output += "。";
           continue;
         }
-        if (token == "Q") {
+        if (stripped == "Q") {
           output += "？";
           continue;
         }
-        if (token == "R") {
+        if (stripped == "R") {
           output += "：";
           continue;
         }
-        if (token == "Z") {
+        if (stripped == "Z") {
           output += "。";
           continue;
         }
-        output += token;
+        if (stripped != token && stripped.empty()) {
+          continue;
+        }
+        if (stripped.size() == 1 &&
+            (stripped[0] < 'a' || stripped[0] > 'z') &&
+            (stripped[0] < 'A' || stripped[0] > 'Z')) {
+          continue;
+        }
+        output += stripped;
       }
     }
     return output;
