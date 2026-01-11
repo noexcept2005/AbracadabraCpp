@@ -740,6 +740,7 @@ class WenyanSimulator {
 
       for (const auto& token : selectedTokens) {
         std::string stripped = detail::StripTokenPrefix(token);
+        bool hadPrefix = stripped != token;
         if (stripped == "N" || stripped == "V" || stripped == "A" ||
             stripped == "AD") {
           if (index >= length) {
@@ -777,7 +778,11 @@ class WenyanSimulator {
           output += "。";
           continue;
         }
-        if (stripped != token && stripped.empty()) {
+        if (hadPrefix && stripped.empty()) {
+          continue;
+        }
+        if (hadPrefix && stripped.size() == 1 &&
+            stripped[0] >= 'A' && stripped[0] <= 'Z') {
           continue;
         }
         if (stripped.size() == 1 &&
