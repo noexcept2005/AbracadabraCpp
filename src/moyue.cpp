@@ -30,8 +30,8 @@ void PrintHelp() {
          "  -d         Decrypt input\n"
          "  -i <text>  Input text (omit to read from stdin)\n"
          "  -k <key>   Key (default: ABRACADABRA)\n"
-         "  --old      Use old mapping mode (markers omitted by default)\n"
-         "  --old-markers  Include old-mode decrypt markers in output\n"
+         "  --old      Use old mapping mode (markers included by default)\n"
+         "  --old-no-markers  Omit old-mode decrypt markers in output\n"
          "  /?         Show this help\n";
 }
 
@@ -52,7 +52,7 @@ int RunCli(const std::vector<std::string>& args) {
     bool encrypt = false;
     bool decrypt = false;
     bool useOld = false;
-    bool oldOmitMarkers = true;
+    bool oldOmitMarkers = false;
     std::string key = "ABRACADABRA";
     std::string input;
 
@@ -74,8 +74,8 @@ int RunCli(const std::vector<std::string>& args) {
         useOld = true;
         continue;
       }
-      if (arg == "--old-markers") {
-        oldOmitMarkers = false;
+      if (arg == "--old-no-markers") {
+        oldOmitMarkers = true;
         continue;
       }
       if (arg == "-k") {
