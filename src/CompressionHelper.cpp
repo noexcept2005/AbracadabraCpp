@@ -76,8 +76,14 @@ std::vector<std::uint8_t> RunNodeHelper(const std::vector<std::uint8_t>& data,
   std::string input(data.begin(), data.end());
   std::string base64 = moyue::misc::Base64Encode(input);
 
-  std::filesystem::path helperPath =
-      std::filesystem::path(__FILE__).parent_path() / "unishox_helper.mjs";
+  std::filesystem::path helperPath = "unishox_helper.mjs";
+  if (!std::filesystem::exists(helperPath)) {
+    helperPath = std::filesystem::path("src") / "unishox_helper.mjs";
+  }
+  if (!std::filesystem::exists(helperPath)) {
+    helperPath =
+        std::filesystem::path(__FILE__).parent_path() / "unishox_helper.mjs";
+  }
 
 #ifdef _WIN32
   std::wstring command =
