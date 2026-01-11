@@ -14,6 +14,11 @@
 #include <sstream>
 #include <string>
 #include <variant>
+#include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "Abracadabra.cpp"
 
@@ -36,9 +41,9 @@ std::string ReadStdin() {
 }
 }  // namespace
 
-int main(int argc, char* argv[]) {
+int RunCli(const std::vector<std::string>& args) {
   try {
-    if (argc == 1) {
+    if (args.size() <= 1) {
       PrintHelp();
       return 0;
     }
@@ -49,8 +54,8 @@ int main(int argc, char* argv[]) {
     std::string key = "ABRACADABRA";
     std::string input;
 
-    for (int i = 1; i < argc; ++i) {
-      std::string arg = argv[i];
+    for (size_t i = 1; i < args.size(); ++i) {
+      std::string arg = args[i];
       if (arg == "/?" || arg == "-h" || arg == "--help") {
         PrintHelp();
         return 0;
@@ -68,17 +73,17 @@ int main(int argc, char* argv[]) {
         continue;
       }
       if (arg == "-k") {
-        if (i + 1 >= argc) {
+        if (i + 1 >= args.size()) {
           throw std::runtime_error("Missing key after -k");
         }
-        key = argv[++i];
+        key = args[++i];
         continue;
       }
       if (arg == "-i") {
-        if (i + 1 >= argc) {
+        if (i + 1 >= args.size()) {
           throw std::runtime_error("Missing input after -i");
         }
-        input = argv[++i];
+        input = args[++i];
         continue;
       }
       throw std::runtime_error("Unknown argument: " + arg);
@@ -115,3 +120,43 @@ int main(int argc, char* argv[]) {
   }
   return 0;
 }
+
+#ifdef _WIN32
+std::string WideToUtf8(const std::wstring& input) {
+  if (input.empty()) {
+    return {};
+  }
+  int len =
+      WideCharToMultiByte(CP_UTF8, 0, input.data(),
+                          static_cast<int>(input.size()), nullptr, 0, nullptr,
+                          nullptr);
+  if (len <= 0) {
+    return {};
+  }
+  std::string output(static_cast<size_t>(len), '\0');
+  WideCharToMultiByte(CP_UTF8, 0, input.data(),
+                      static_cast<int>(input.size()), output.data(), len,
+                      nullptr, nullptr);
+  return output;
+}
+
+int wmain(int argc, wchar_t* argv[]) {
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+  std::vector<std::string> args;
+  args.reserve(static_cast<size_t>(argc));
+  for (int i = 0; i < argc; ++i) {
+    args.emplace_back(WideToUtf8(argv[i]));
+  }
+  return RunCli(args);
+}
+#else
+int main(int argc, char* argv[]) {
+  std::vector<std::string> args;
+  args.reserve(static_cast<size_t>(argc));
+  for (int i = 0; i < argc; ++i) {
+    args.emplace_back(argv[i]);
+  }
+  return RunCli(args);
+}
+#endif
