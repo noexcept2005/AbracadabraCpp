@@ -74,8 +74,9 @@ inline void WriteUint32(std::vector<std::uint8_t>& out, std::uint32_t value) {
 }
 }  // namespace detail
 
-inline std::vector<std::uint8_t> Sha256Bytes(const std::string& input) {
-  std::vector<std::uint8_t> data(input.begin(), input.end());
+inline std::vector<std::uint8_t> Sha256Bytes(
+    const std::vector<std::uint8_t>& input) {
+  std::vector<std::uint8_t> data = input;
   std::uint64_t bitLen = static_cast<std::uint64_t>(data.size()) * 8;
   data.push_back(0x80);
   while ((data.size() % 64) != 56) {
@@ -140,6 +141,10 @@ inline std::vector<std::uint8_t> Sha256Bytes(const std::string& input) {
     detail::WriteUint32(output, value);
   }
   return output;
+}
+
+inline std::vector<std::uint8_t> Sha256Bytes(const std::string& input) {
+  return Sha256Bytes(std::vector<std::uint8_t>(input.begin(), input.end()));
 }
 
 }  // namespace moyue::crypto

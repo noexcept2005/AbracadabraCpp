@@ -94,6 +94,25 @@ std::string Base64Decode(const std::string& input) {
   return output;
 }
 
+bool IsBase64String(const std::string& input) {
+  if (input.empty()) {
+    return false;
+  }
+  if (input.size() % 4 != 0) {
+    return false;
+  }
+  size_t validCount = 0;
+  for (unsigned char c : input) {
+    if (c == '=' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') || c == '+' || c == '/') {
+      validCount++;
+      continue;
+    }
+    return false;
+  }
+  return validCount == input.size();
+}
+
 class PreCheckResult {
  public:
   PreCheckResult(std::vector<std::uint8_t> output, bool isEncrypted = false)

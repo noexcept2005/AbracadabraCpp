@@ -141,6 +141,9 @@ std::string Dec(const InputPayload& input, const std::string& key,
 
   std::vector<std::uint8_t> tempStr2Int;
   std::string padded = moyue::misc::AddPadding(tempStr1);
+  if (!moyue::misc::IsBase64String(padded)) {
+    throw std::runtime_error("Error Decoding. Bad Input or Incorrect Key.");
+  }
   std::string decoded = moyue::misc::Base64Decode(padded);
   tempStr2Int.assign(decoded.begin(), decoded.end());
   if (callback) {
@@ -192,6 +195,9 @@ std::string DecOld(const InputPayload& input, const std::string& key) {
 
   std::vector<std::uint8_t> tempStr2Int;
   std::string padded = moyue::misc::AddPadding(tempStr1);
+  if (!moyue::misc::IsBase64String(padded)) {
+    throw std::runtime_error("Error Decoding. Bad Input or Incorrect Key.");
+  }
   std::string decoded = moyue::misc::Base64Decode(padded);
   tempStr2Int.assign(decoded.begin(), decoded.end());
   tempStr2Int = moyue::encrypt::Decrypt(tempStr2Int, key);

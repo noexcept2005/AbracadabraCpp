@@ -36,9 +36,13 @@ std::vector<std::uint8_t> Aes256CtrEncrypt(
   std::array<std::uint8_t, 32> keyBytes{};
   std::copy_n(keyHash.begin(), keyBytes.size(), keyBytes.begin());
 
+  std::vector<std::uint8_t> hashWithRandom = keyHash;
+  hashWithRandom.push_back(randomBytes[0]);
+  hashWithRandom.push_back(randomBytes[1]);
+  auto hashHash = moyue::crypto::Sha256Bytes(hashWithRandom);
+
   std::array<std::uint8_t, 16> iv{};
-  iv[0] = randomBytes[0];
-  iv[1] = randomBytes[1];
+  std::copy_n(hashHash.begin(), iv.size(), iv.begin());
 
   return moyue::crypto::Aes256CtrEncrypt(data, keyBytes, iv);
 }
