@@ -204,6 +204,16 @@ class JsonParser {
 std::string LoadFile(const std::string& path) {
   std::ifstream file(path);
   if (!file.is_open()) {
+    if (path.find('/') == std::string::npos &&
+        path.find('\\') == std::string::npos) {
+      std::string fallback = "src/" + path;
+      file.open(fallback);
+      if (file.is_open()) {
+        std::ostringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+      }
+    }
     throw std::runtime_error("Unable to open mapping file: " + path);
   }
   std::ostringstream buffer;
@@ -444,7 +454,7 @@ std::vector<std::string> SplitUtf8(const std::string& input) {
 class WenyanSimulator {
  public:
   explicit WenyanSimulator(const std::string& key)
-      : mappingData_(detail::LoadWenyanMapping("src/mapping_next.json")),
+      : mappingData_(detail::LoadWenyanMapping("mapping_next.json")),
         roundObfusHelper_(key) {
     InitDecodeTable();
   }
@@ -821,7 +831,7 @@ class WenyanSimulator {
 class OldMapper {
  public:
   explicit OldMapper(const std::string& key)
-      : mappingData_(detail::LoadOldMapping("src/mapping.json")),
+      : mappingData_(detail::LoadOldMapping("mapping.json")),
         roundObfusHelper_(key) {
     InitDecodeTable();
   }
