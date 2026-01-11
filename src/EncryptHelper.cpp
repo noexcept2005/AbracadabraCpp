@@ -17,7 +17,9 @@
 #include <string>
 #include <vector>
 
+#include "Aes.hpp"
 #include "Misc.cpp"
+#include "Sha256.hpp"
 
 namespace moyue::encrypt {
 
@@ -30,10 +32,15 @@ std::mt19937& RandomEngine() {
 std::vector<std::uint8_t> Aes256CtrEncrypt(
     const std::vector<std::uint8_t>& data, const std::string& key,
     const std::array<std::uint8_t, 2>& randomBytes) {
-  // TODO: Port AES-256-CTR with SHA256 key derivation and IV setup.
-  (void)key;
-  (void)randomBytes;
-  return data;
+  auto keyHash = moyue::crypto::Sha256Bytes(key);
+  std::array<std::uint8_t, 32> keyBytes{};
+  std::copy_n(keyHash.begin(), keyBytes.size(), keyBytes.begin());
+
+  std::array<std::uint8_t, 16> iv{};
+  iv[0] = randomBytes[0];
+  iv[1] = randomBytes[1];
+
+  return moyue::crypto::Aes256CtrEncrypt(data, keyBytes, iv);
 }
 }  // namespace
 
