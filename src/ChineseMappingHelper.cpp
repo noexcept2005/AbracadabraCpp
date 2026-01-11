@@ -21,30 +21,9 @@
 #include <vector>
 
 #include "Misc.cpp"
+#include "RoundObfusHelper.cpp"
 
 namespace moyue::mapping {
-
-class RoundObfus {
- public:
-  explicit RoundObfus(const std::string& key) : key_(key) {}
-  std::string RoundKeyMatch(const std::string& keyIn) const { return keyIn; }
-  std::string DRoundKeyMatch(const std::string& keyIn) const { return keyIn; }
-  void RoundKey() {}
-
- private:
-  std::string key_;
-};
-
-class RoundObfusOld {
- public:
-  explicit RoundObfusOld(const std::string& key) : key_(key) {}
-  std::string RoundKeyMatch(const std::string& keyIn) const { return keyIn; }
-  std::string DRoundKeyMatch(const std::string& keyIn) const { return keyIn; }
-  void RoundKey() {}
-
- private:
-  std::string key_;
-};
 
 class WenyanSimulator {
  public:
@@ -306,7 +285,7 @@ class WenyanSimulator {
  private:
   std::string map_;
   std::string nullStr_ = "孎"; //默认忽略的占位字符，一个生僻字。
-  RoundObfus roundObfusHelper_;
+  moyue::round::RoundObfus roundObfusHelper_;
 };
 
 class OldMapper {
@@ -353,7 +332,7 @@ class OldMapper {
  private:
   std::string map_;
   std::string nullStr_ = "孎"; //默认忽略的占位字符，一个生僻字。
-  RoundObfusOld roundObfusHelper_;
+  moyue::round::RoundObfusOld roundObfusHelper_;
 };
 
 }  // namespace moyue::mapping
