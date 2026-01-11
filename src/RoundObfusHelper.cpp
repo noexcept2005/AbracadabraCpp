@@ -241,8 +241,8 @@ class RoundObfusOld {
       lettersRound1_ = RotateString(lettersRound1_, 6);
       numberSymbolRound1_ = RotateString(numberSymbolRound1_, 6);
 
-      lettersRound2_ = RotateStringLeft(lettersRound2_, controlNum * 2);
-      numberSymbolRound2_ = RotateStringLeft(numberSymbolRound2_, controlNum * 2);
+      lettersRound2_ = RotateStringLeft(lettersRound2_, controlNum);
+      numberSymbolRound2_ = RotateStringLeft(numberSymbolRound2_, controlNum);
 
       lettersRound3_ = RotateString(lettersRound3_, controlNum / 2 + 1);
       numberSymbolRound3_ = RotateString(numberSymbolRound3_, controlNum / 2 + 1);
