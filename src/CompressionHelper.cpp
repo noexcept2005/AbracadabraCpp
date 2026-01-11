@@ -11,7 +11,10 @@
  *
  */
 
+#include <array>
 #include <cstdint>
+#include <cstdio>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -20,60 +23,70 @@
 namespace moyue::compress {
 
 namespace {
-const std::vector<std::string> kChineseWebpanLib = {
-    "https://", "lanzou", "pan.quark.cn", "pan.baidu.com",
-    "aliyundrive.com", "123pan.com"};
-const std::vector<std::string> kInterWebpanLib = {
-    "https://", "mypikpak.com", "mega.nz", "drive.google.com",
-    "sharepoint.com", "1drv.ms"};
-const std::vector<std::string> kChineseWebsiteLib = {
-    "https://", "baidu.com", "b23.tv", "bilibili.com", "weibo.com",
-    "weixin.qq.com"};
-const std::vector<std::string> kInterWebsiteLib = {
-    "https://", "google.com", "youtube.com", "x.com", "twitter.com",
-    "telegra.ph"};
-const std::vector<std::string> kInterWebsiteLib2 = {
-    "https://", "wikipedia.org", "github.com", "pages.dev",
-    "github.io", "netlify.app"};
-const std::vector<std::string> kJapanWebsiteLib = {
-    "https://", "pixiv.net", "nicovideo.jp", "dlsite.com", "line.me",
-    "dmm.com"};
-const std::vector<std::string> kPiracyWebsiteLib = {
-    "https://", "nyaa.si", "bangumi.moe", "thepiratebay.org",
-    "e-hentai.org", "exhentai.org"};
-const std::vector<std::string> kGenericTlinkLib = {
-    "https://", "magnet:?xt=urn:btih:", "magnet:?xt=urn:sha1:", "ed2k://",
-    "thunder://", "torrent"};
-const std::vector<std::string> kGenericLinkLib1 =
-    {"https://", ".cn", ".com", ".net", ".org", ".xyz"};
-const std::vector<std::string> kGenericLinkLib2 =
-    {"https://", ".info", ".moe", ".cc", ".co", ".dev"};
-const std::vector<std::string> kGenericLinkLib3 =
-    {"https://", ".io", ".us", ".eu", ".jp", ".de"};
-const std::vector<std::string> kGenericLinkLib4 =
-    {"https://", ".top", ".one", ".online", ".me", ".ca"};
+std::string QuoteForShell(const std::string& input) {
+  std::string output = "'";
+  for (char c : input) {
+    if (c == '\'') {
+      output += "'\\''";
+    } else {
+      output += c;
+    }
+  }
+  output += "'";
+  return output;
+}
+
+std::vector<std::uint8_t> RunNodeHelper(const std::vector<std::uint8_t>& data,
+                                        const std::string& mode) {
+  std::string input(data.begin(), data.end());
+  std::string base64 = moyue::misc::Base64Encode(input);
+
+  std::filesystem::path helperPath =
+      std::filesystem::path(__FILE__).parent_path() / "unishox_helper.mjs";
+
+  std::string command = "node " + QuoteForShell(helperPath.string()) + " " +
+                        QuoteForShell(mode) + " " + QuoteForShell(base64);
+
+  std::array<char, 256> buffer{};
+  std::string output;
+  FILE* pipe = popen(command.c_str(), "r");
+  if (!pipe) {
+    return data;
+  }
+  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe)) {
+    output += buffer.data();
+  }
+  int status = pclose(pipe);
+  if (status != 0 || output.empty()) {
+    return data;
+  }
+
+  while (!output.empty() &&
+         (output.back() == '\n' || output.back() == '\r')) {
+    output.pop_back();
+  }
+
+  std::string decoded = moyue::misc::Base64Decode(output);
+  return std::vector<std::uint8_t>(decoded.begin(), decoded.end());
+}
 
 std::vector<std::uint8_t> GzipCompress(const std::vector<std::uint8_t>& data) {
-  // TODO: Replace with real gzip compression (pako equivalent).
-  return data;
+  return RunNodeHelper(data, "gzip_compress");
 }
 
 std::vector<std::uint8_t> GzipDecompress(
     const std::vector<std::uint8_t>& data) {
-  // TODO: Replace with real gzip decompression.
-  return data;
+  return RunNodeHelper(data, "gzip_decompress");
 }
 
 std::vector<std::uint8_t> UnishoxCompress(
     const std::vector<std::uint8_t>& data) {
-  // TODO: Replace with Unishox2 implementation.
-  return data;
+  return RunNodeHelper(data, "compress");
 }
 
 std::vector<std::uint8_t> UnishoxDecompress(
     const std::vector<std::uint8_t>& data) {
-  // TODO: Replace with Unishox2 implementation.
-  return data;
+  return RunNodeHelper(data, "decompress");
 }
 }  // namespace
 
