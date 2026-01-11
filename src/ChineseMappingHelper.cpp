@@ -896,14 +896,13 @@ class OldMapper {
 
     if (!q && (!mappingData_.decryptJp.empty() || !mappingData_.decryptCn.empty())) {
       auto chars = detail::SplitUtf8(output);
-      std::vector<int> positions;
-      positions.reserve(chars.size());
-      for (size_t i = 0; i < chars.size(); ++i) {
-        positions.push_back(static_cast<int>(i));
-      }
-
       std::vector<int> avoid;
-      if (!mappingData_.decryptJp.empty() && !positions.empty()) {
+      if (!mappingData_.decryptJp.empty() && !chars.empty()) {
+        std::vector<int> positions;
+        positions.reserve(chars.size());
+        for (size_t i = 0; i < chars.size(); ++i) {
+          positions.push_back(static_cast<int>(i));
+        }
         int jpIndex = positions[static_cast<size_t>(moyue::misc::GetRandomIndex(
             static_cast<int>(positions.size())))];
         std::string jpMarker = detail::RandomChoice(mappingData_.decryptJp);
@@ -914,7 +913,12 @@ class OldMapper {
         }
       }
 
-      if (!mappingData_.decryptCn.empty() && !positions.empty()) {
+      if (!mappingData_.decryptCn.empty() && !chars.empty()) {
+        std::vector<int> positions;
+        positions.reserve(chars.size());
+        for (size_t i = 0; i < chars.size(); ++i) {
+          positions.push_back(static_cast<int>(i));
+        }
         std::vector<int> available;
         available.reserve(positions.size());
         for (int pos : positions) {
