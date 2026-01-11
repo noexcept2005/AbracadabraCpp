@@ -887,14 +887,6 @@ class OldMapper {
 
   std::string EnMap(const std::string& originStr, bool q) {
     std::string output;
-    if (!q) {
-      if (!mappingData_.decryptJp.empty()) {
-        output += detail::RandomChoice(mappingData_.decryptJp);
-      }
-      if (!mappingData_.decryptCn.empty()) {
-        output += detail::RandomChoice(mappingData_.decryptCn);
-      }
-    }
     roundObfusHelper_.RoundKey();
     for (char c : originStr) {
       std::string obfuscated = roundObfusHelper_.RoundKeyMatch(std::string(1, c));
