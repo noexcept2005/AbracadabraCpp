@@ -26,6 +26,18 @@ namespace moyue::compress {
 
 namespace {
 std::string QuoteForShell(const std::string& input) {
+#ifdef _WIN32
+  std::string output = "\"";
+  for (char c : input) {
+    if (c == '"') {
+      output += "\\\"";
+    } else {
+      output += c;
+    }
+  }
+  output += "\"";
+  return output;
+#else
   std::string output = "'";
   for (char c : input) {
     if (c == '\'') {
@@ -36,6 +48,7 @@ std::string QuoteForShell(const std::string& input) {
   }
   output += "'";
   return output;
+#endif
 }
 
 std::vector<std::uint8_t> RunNodeHelper(const std::vector<std::uint8_t>& data,
