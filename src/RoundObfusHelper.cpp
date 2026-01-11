@@ -18,17 +18,13 @@
 #include <vector>
 
 #include "Misc.cpp"
+#include "Sha256.hpp"
 
 namespace moyue::round {
 
 namespace {
 std::vector<std::uint8_t> HashKeyToBytes(const std::string& key) {
-  // TODO: Replace with SHA256 hashing of the key (CryptoJS.SHA256 equivalent).
-  std::vector<std::uint8_t> bytes(32, 0);
-  for (size_t i = 0; i < key.size(); ++i) {
-    bytes[i % bytes.size()] ^= static_cast<std::uint8_t>(key[i]);
-  }
-  return bytes;
+  return moyue::crypto::Sha256Bytes(key);
 }
 
 std::string RotateString(const std::string& input, size_t count) {

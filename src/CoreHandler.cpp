@@ -105,8 +105,6 @@ std::string Enc(const InputPayload& input, const std::string& key,
   moyue::mapping::WenyanSimulator simulator(key);
 
   std::vector<std::uint8_t> originalData = input.output;
-  std::string tempStr = moyue::misc::Uint8ArrayToString(originalData);
-
   std::vector<std::uint8_t> tempArray(originalData.size() + 1);
   std::copy(originalData.begin(), originalData.end(), tempArray.begin());
 
@@ -118,7 +116,9 @@ std::string Enc(const InputPayload& input, const std::string& key,
   //加密
   originalData = moyue::encrypt::Encrypt(originalData, key);
 
-  std::string originStr = moyue::misc::RemovePadding(tempStr);
+  std::string encryptedStr(originalData.begin(), originalData.end());
+  std::string originStr = moyue::misc::RemovePadding(
+      moyue::misc::Base64Encode(encryptedStr));
   if (callback) {
     callback(CallbackObj("ENC_BASE64", originStr));
   }
@@ -140,7 +140,12 @@ std::string Dec(const InputPayload& input, const std::string& key,
   std::string tempStr1 = simulator.DeMap(originStr);
 
   std::vector<std::uint8_t> tempStr2Int;
-  // TODO: Base64 校验与解码。
+  std::string padded = moyue::misc::AddPadding(tempStr1);
+  if (!moyue::misc::IsBase64String(padded)) {
+    throw std::runtime_error("Error Decoding. Bad Input or Incorrect Key.");
+  }
+  std::string decoded = moyue::misc::Base64Decode(padded);
+  tempStr2Int.assign(decoded.begin(), decoded.end());
   if (callback) {
     callback(CallbackObj("DEC_BASE64", tempStr1));
   }
@@ -173,8 +178,9 @@ std::string EncOld(const InputPayload& input, const std::string& key, bool q) {
   //加密
   originalData = moyue::encrypt::Encrypt(originalData, key);
 
+  std::string encryptedStr(originalData.begin(), originalData.end());
   std::string originStr = moyue::misc::RemovePadding(
-      moyue::misc::Uint8ArrayToString(originalData));
+      moyue::misc::Base64Encode(encryptedStr));
   //映射
   return mapper.EnMap(originStr, q);
 }
@@ -188,7 +194,12 @@ std::string DecOld(const InputPayload& input, const std::string& key) {
   std::string tempStr1 = mapper.DeMap(originStr);
 
   std::vector<std::uint8_t> tempStr2Int;
-  // TODO: Base64 校验与解码。
+  std::string padded = moyue::misc::AddPadding(tempStr1);
+  if (!moyue::misc::IsBase64String(padded)) {
+    throw std::runtime_error("Error Decoding. Bad Input or Incorrect Key.");
+  }
+  std::string decoded = moyue::misc::Base64Decode(padded);
+  tempStr2Int.assign(decoded.begin(), decoded.end());
   tempStr2Int = moyue::encrypt::Decrypt(tempStr2Int, key);
   tempStr2Int = moyue::compress::Decompress(tempStr2Int);
 
