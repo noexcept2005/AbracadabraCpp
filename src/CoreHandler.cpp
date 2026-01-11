@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
  *
