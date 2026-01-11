@@ -28,6 +28,24 @@ std::mt19937& RandomEngine() {
   static std::mt19937 engine{std::random_device{}()};
   return engine;
 }
+
+std::vector<std::string> SplitUtf8(const std::string& input) {
+  std::vector<std::string> chars;
+  for (size_t i = 0; i < input.size();) {
+    unsigned char c = static_cast<unsigned char>(input[i]);
+    size_t len = 1;
+    if (c >= 0xF0) {
+      len = 4;
+    } else if (c >= 0xE0) {
+      len = 3;
+    } else if (c >= 0xC0) {
+      len = 2;
+    }
+    chars.push_back(input.substr(i, len));
+    i += len;
+  }
+  return chars;
+}
 }  // namespace
 
 constexpr char kBase64Chars[] =
@@ -238,22 +256,23 @@ PreCheckResult PreCheckOld(const std::string& input) {
   const std::string sigDecryptJp = "桜込凪雫実沢";
   const std::string sigDecryptCn = "玚俟玊欤瞐珏";
 
-  std::string working = input;
+  std::string working;
   bool isJpFound = false;
   bool isCnFound = false;
 
-  for (size_t i = 0; i < working.size(); ++i) {
-    char temp = working[i];
-    if (sigDecryptJp.find(temp) != std::string::npos) {
-      working = SetCharOnIndex(working, i, kNullStr);
+  auto chars = SplitUtf8(input);
+  for (const auto& ch : chars) {
+    if (sigDecryptJp.find(ch) != std::string::npos) {
+      working += kNullStr;
       isJpFound = true;
       continue;
     }
-    if (sigDecryptCn.find(temp) != std::string::npos) {
-      working = SetCharOnIndex(working, i, kNullStr);
+    if (sigDecryptCn.find(ch) != std::string::npos) {
+      working += kNullStr;
       isCnFound = true;
       continue;
     }
+    working += ch;
   }
 
   bool isEncrypted = isJpFound && isCnFound;
