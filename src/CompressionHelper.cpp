@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <zlib.h>
+
 #include "Misc.cpp"
 
 namespace moyue::compress {
