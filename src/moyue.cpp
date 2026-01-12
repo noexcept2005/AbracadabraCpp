@@ -33,6 +33,7 @@ void PrintHelp() {
          "  --old      Use old mapping mode (markers omitted by default)\n"
          "  --old-markers  Use old mode and include decrypt markers\n"
          "  --old-no-markers  Use old mode and omit decrypt markers\n"
+         "  --         Treat all remaining arguments as input (for -i)\n"
          "  /?         Show this help\n";
 }
 
@@ -40,6 +41,12 @@ std::string ReadStdin() {
   std::ostringstream buffer;
   buffer << std::cin.rdbuf();
   return buffer.str();
+}
+
+bool IsCliOption(const std::string& arg) {
+  return arg == "/?" || arg == "-h" || arg == "--help" || arg == "-e" ||
+         arg == "-d" || arg == "-k" || arg == "-i" || arg == "--old" ||
+         arg == "--old-markers" || arg == "--old-no-markers" || arg == "--";
 }
 }  // namespace
 
@@ -62,6 +69,16 @@ int RunCli(const std::vector<std::string>& args) {
       if (arg == "/?" || arg == "-h" || arg == "--help") {
         PrintHelp();
         return 0;
+      }
+      if (arg == "--") {
+        if (!input.empty()) {
+          for (size_t j = i + 1; j < args.size(); ++j) {
+            input += " ";
+            input += args[j];
+          }
+          break;
+        }
+        continue;
       }
       if (arg == "-e") {
         encrypt = true;
@@ -97,6 +114,10 @@ int RunCli(const std::vector<std::string>& args) {
           throw std::runtime_error("Missing input after -i");
         }
         input = args[++i];
+        while (i + 1 < args.size() && !IsCliOption(args[i + 1])) {
+          input += " ";
+          input += args[++i];
+        }
         continue;
       }
       throw std::runtime_error("Unknown argument: " + arg);
