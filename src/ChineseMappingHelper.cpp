@@ -823,6 +823,7 @@ class WenyanSimulator {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
@@ -944,6 +945,7 @@ class OldMapper {
   std::string DeMap(const std::string& originStr) {
     std::string output;
     auto chars = detail::SplitUtf8(originStr);
+    roundObfusHelper_.RoundKey();
     for (const auto& ch : chars) {
       std::string mapped = FindOriginText(ch);
       if (mapped == nullStr_) {
